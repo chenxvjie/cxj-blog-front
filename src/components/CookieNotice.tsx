@@ -1,0 +1,3 @@
+import { Button } from 'antd'
+import { useState } from 'react'
+export function CookieNotice() { const [show, setShow] = useState(() => localStorage.getItem('analytics-consent') === null); if (!show) return null; return <aside className="fixed bottom-4 left-4 right-4 z-50 mx-auto flex max-w-3xl items-center gap-4 rounded-xl bg-slate-900 p-4 text-sm text-white shadow-xl"><span className="flex-1">本站会在你同意后启用访问统计，用于了解 PV/UV 与内容表现。</span><Button size="small" onClick={() => { localStorage.setItem('analytics-consent', 'denied'); setShow(false) }}>拒绝</Button><Button size="small" type="primary" onClick={() => { localStorage.setItem('analytics-consent', 'granted'); setShow(false) }}>同意</Button></aside> }

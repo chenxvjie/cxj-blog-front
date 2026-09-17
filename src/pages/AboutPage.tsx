@@ -1,0 +1,1 @@
+export function AboutPage() { return <section className="rounded-2xl bg-white p-8 shadow-sm"><h1 className="text-3xl font-bold">关于这个博客</h1><p className="mt-4 leading-8 text-slate-600">这是一个使用 React、Spring Boot 与 PostgreSQL 构建的个人博客。</p></section> }
