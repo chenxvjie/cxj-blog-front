@@ -29,6 +29,7 @@ node .\node_modules\vite\bin\vite.js build
 | 2026-09-17 | auth-ui | 增加读者注册与邮箱验证码登录界面；未接入认证接口时明确提示失败，不伪造会话。 | 等待后端 `/auth/*` 与极验接口。 |
 | 2026-09-17 | layout | 全局布局纵向至少占满视口；内容保持居中阅读宽度，文章详情单独维持阅读宽度。 | TypeScript 与 Vite 生产构建通过。 |
 | 2026-09-17 | layout-fix | 使用显式全高 Flex 布局，主内容撑开可视区域，隐私政策链接所在页脚贴齐页面底部。 | TypeScript 与 Vite 生产构建通过。 |
+| 2026-09-18 | docker-prod | 增加 Node 多阶段构建及 Nginx 静态站点镜像，生产 API 默认使用同域 `/api/v1`。 | 待云服务器执行 `docker compose build frontend` 验证。 |
 
 ## 功能状态
 
