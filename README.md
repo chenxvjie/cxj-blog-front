@@ -30,6 +30,7 @@ node .\node_modules\vite\bin\vite.js build
 | 2026-09-17 | layout | 全局布局纵向至少占满视口；内容保持居中阅读宽度，文章详情单独维持阅读宽度。 | TypeScript 与 Vite 生产构建通过。 |
 | 2026-09-17 | layout-fix | 使用显式全高 Flex 布局，主内容撑开可视区域，隐私政策链接所在页脚贴齐页面底部。 | TypeScript 与 Vite 生产构建通过。 |
 | 2026-09-18 | docker-prod | 增加 Node 多阶段构建及 Nginx 静态站点镜像，生产 API 默认使用同域 `/api/v1`。 | 待云服务器执行 `docker compose build frontend` 验证。 |
+| 2026-09-18 | docker-build-fix | 显式允许 Vite 所需的 `esbuild` 在受控 Docker 构建中执行安装脚本。 | 解决 pnpm 的 `ERR_PNPM_IGNORED_BUILDS`。 |
 
 ## 功能状态
 
