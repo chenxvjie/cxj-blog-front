@@ -34,7 +34,9 @@ function loadScript() {
 }
 export async function verifyHuman(): Promise<CaptchaProof> {
   const { data } = await client.get<{ data: { enabled: boolean; captchaId?: string } }>('/auth/captcha-config')
-  if (!data.data.enabled || !data.data.captchaId) throw new Error('人机验证服务尚未配置，暂时不能发送验证码')
+  if (!data.data.enabled || !data.data.captchaId) throw new Error(import.meta.env.DEV
+    ? '本地模式未启用人机验证，已停止发送验证码，不会调用极验或发送真实邮件。其他页面可继续使用。'
+    : '人机验证服务尚未配置，暂时不能发送验证码')
   await loadScript()
   return new Promise<CaptchaProof>((resolve, reject) => {
     let instance: Captcha | undefined

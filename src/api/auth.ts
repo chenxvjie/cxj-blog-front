@@ -5,4 +5,5 @@ export async function sendEmailCode(email: string) {
   return client.post('/auth/email-code', { email, captcha }, { timeout: 25000 })
 }
 export async function emailLogin(email: string, code: string) { return client.post('/auth/email-login', { email, code }) }
-export async function register(email: string, code: string, nickname: string) { return client.post('/auth/register', { email, code, nickname }) }
+export async function register(email: string, code: string, nickname: string, password: string) { return client.post('/auth/register', { email, code, nickname, password }) }
+export async function passwordLogin(email: string, password: string) { return client.post('/auth/password-login', { email, password }) }
