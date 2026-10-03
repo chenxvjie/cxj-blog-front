@@ -19,21 +19,25 @@ function AuthForm({ mode }: { mode: 'login' | 'register' | 'password' }) {
   const [form] = Form.useForm<Values>()
   const [sending, setSending] = useState(false)
   const [waiting, setWaiting] = useState(0)
+  const cooldownUntil = useRef(0)
+  const [sendResult, setSendResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const busy = useRef(false)
   useEffect(() => {
     if (!waiting) return
-    const timer = window.setTimeout(() => setWaiting(waiting - 1), 1000)
+    const timer = window.setTimeout(() => setWaiting(Math.max(0, Math.ceil((cooldownUntil.current - Date.now()) / 1000))), 1000)
     return () => clearTimeout(timer)
   }, [waiting])
   const send = async () => {
     if (busy.current || waiting) return
     try { await form.validateFields(['email']) } catch { return }
     if (busy.current) return
-    busy.current = true; setSending(true)
+    busy.current = true; setSending(true); setSendResult(null)
+    cooldownUntil.current = Date.now() + 60000; setWaiting(60)
     try {
       await sendEmailCode(form.getFieldValue('email'))
-      message.success('验证码已发送，请查收邮箱'); setWaiting(60)
-    } catch (error) { message.warning(errorMessage(error)) }
+      cooldownUntil.current = Date.now() + 60000; setWaiting(60)
+      setSendResult({ type: 'success', text: '验证码发送请求已受理，请查收邮箱；若未收到，请检查垃圾邮件。' })
+    } catch (error) { setSendResult({ type: 'error', text: errorMessage(error) }) }
     finally { busy.current = false; setSending(false) }
   }
   const submit = async (values: Values) => {
@@ -51,8 +55,9 @@ function AuthForm({ mode }: { mode: 'login' | 'register' | 'password' }) {
     {mode === 'register' && <Form.Item name="nickname" label="昵称" rules={[{ required: true }]}><Input maxLength={80} /></Form.Item>}
     {mode !== 'login' && <Form.Item name="password" label="密码" rules={[{ required: true, min: 8, max: 72, message: '请输入8至72字符密码' }, { validator: (_, value) => !value || new TextEncoder().encode(value).length <= 72 ? Promise.resolve() : Promise.reject(new Error('密码不能超过72个UTF-8字节')) }]}><Input.Password autoComplete={mode === 'register' ? 'new-password' : 'current-password'} /></Form.Item>}
     {mode !== 'password' && <Form.Item name="code" label="邮箱验证码" rules={[{ required: true, pattern: /^[0-9]{6}$/, message: '请输入 6 位验证码' }]}>
-      <Input addonAfter={<Button type="link" loading={sending} disabled={sending || waiting > 0} onClick={() => void send()}>{waiting ? `${waiting}s` : '获取验证码'}</Button>} />
+      <Input addonAfter={<Button loading={sending} disabled={sending || waiting > 0} onClick={() => void send()}>{waiting ? `${waiting}秒后重试` : '获取验证码'}</Button>} />
     </Form.Item>}
+    {mode !== 'password' && sendResult && <Alert className="mb-4" type={sendResult.type} showIcon message={sendResult.text} />}
     <Button htmlType="submit" loading={submitting} type="primary" block>{mode === 'register' ? '注册' : '登录'}</Button>
   </Form>
 }
