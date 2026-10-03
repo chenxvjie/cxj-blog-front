@@ -54,8 +54,13 @@ function AuthForm({ mode }: { mode: 'login' | 'register' | 'password' }) {
     <Form.Item name="email" label="邮箱" rules={[{ required: true, type: 'email', message: '请输入有效邮箱' }]}><Input placeholder="you@example.com" /></Form.Item>
     {mode === 'register' && <Form.Item name="nickname" label="昵称" rules={[{ required: true }]}><Input maxLength={80} /></Form.Item>}
     {mode !== 'login' && <Form.Item name="password" label="密码" rules={[{ required: true, min: 8, max: 72, message: '请输入8至72字符密码' }, { validator: (_, value) => !value || new TextEncoder().encode(value).length <= 72 ? Promise.resolve() : Promise.reject(new Error('密码不能超过72个UTF-8字节')) }]}><Input.Password autoComplete={mode === 'register' ? 'new-password' : 'current-password'} /></Form.Item>}
-    {mode !== 'password' && <Form.Item name="code" label="邮箱验证码" rules={[{ required: true, pattern: /^[0-9]{6}$/, message: '请输入 6 位验证码' }]}>
-      <Input addonAfter={<Button loading={sending} disabled={sending || waiting > 0} onClick={() => void send()}>{waiting ? `${waiting}秒后重试` : '获取验证码'}</Button>} />
+    {mode !== 'password' && <Form.Item label="邮箱验证码" htmlFor={`${mode}-code`} required>
+      <div className="flex items-start gap-2">
+        <Form.Item name="code" noStyle rules={[{ required: true, pattern: /^[0-9]{6}$/, message: '请输入 6 位验证码' }]}>
+          <Input id={`${mode}-code`} className="min-w-0 flex-1" inputMode="numeric" autoComplete="one-time-code" maxLength={6} />
+        </Form.Item>
+        <Button className="shrink-0" loading={sending} disabled={sending || waiting > 0} onClick={() => void send()}>{waiting ? `${waiting}秒后重试` : '获取验证码'}</Button>
+      </div>
     </Form.Item>}
     {mode !== 'password' && sendResult && <Alert className="mb-4" type={sendResult.type} showIcon message={sendResult.text} />}
     <Button htmlType="submit" loading={submitting} type="primary" block>{mode === 'register' ? '注册' : '登录'}</Button>
