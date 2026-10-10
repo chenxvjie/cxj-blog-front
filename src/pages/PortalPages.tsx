@@ -1,17 +1,18 @@
 import { paginationOptions } from '../api/pagination'
-import { Alert, Button, Card, Form, Input, List, Modal, Pagination, Popconfirm, Space, Table, Tabs, Tag, message } from 'antd'
+import { Alert, Button, Card, Checkbox, Form, Input, List, Modal, Pagination, Popconfirm, Space, Table, Tabs, Tag, message } from 'antd'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { PageMeta } from '../components/PageMeta'
 import { errorText } from '../api/errors'
 import { client } from '../api/client'
-import { useSession } from '../api/session'
+import { getSession, useSession } from '../api/session'
 import { uploadImage } from '../api/images'
 
 export function ManagementLinks() {
+  const session = useSession()
   const location = useLocation(); const navigate = useNavigate()
-  return <><PageMeta title="文章管理" /><h1 className="mb-6 text-3xl">文章管理</h1><Tabs activeKey={location.pathname} onChange={key => navigate(key)} items={[{ key: '/admin/posts', label: '文章与投稿' }, { key: '/admin/media', label: '我的图片' }, { key: '/admin/editor', label: '新建文章' }]} /></>
+  return <><PageMeta title="文章管理" /><h1 className="mb-6 text-3xl">文章管理</h1><Tabs activeKey={location.pathname} onChange={key => navigate(key)} items={[{ key: '/admin/posts', label: '文章与投稿' }, { key: '/admin/media', label: session?.user.role === 'ADMIN' ? '图片管理' : '我的图片' }, { key: '/admin/editor', label: '新建文章' }]} /></>
 }
 export function Guard({ children, admin = false }: { children: React.ReactNode; admin?: boolean }) {
   const session = useSession()
@@ -19,23 +20,49 @@ export function Guard({ children, admin = false }: { children: React.ReactNode; 
   if (admin && session.user.role !== 'ADMIN') return <Alert type="warning" message="仅管理员可访问" />
   return <>{children}</>
 }
-export function MediaPage() { return <Guard><section className="page-fill"><ManagementLinks /><MediaLibrary /></section></Guard> }
+export function MediaPage() { const session = useSession(); return <Guard><section className="page-fill"><ManagementLinks /><MediaLibrary key={`${session?.user.id}-${session?.user.role}`} /></section></Guard> }
 function MediaLibrary() {
   const session = useSession()!
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
+  const [selected, setSelected] = useState<number[]>([])
+  const [deleting, setDeleting] = useState(false)
+  const [deleteErrors, setDeleteErrors] = useState<string[]>([])
+  const deleteLock = useRef(false)
   const [busy, setBusy] = useState(false)
   const input = useRef<HTMLInputElement>(null)
   const controller = useRef<AbortController | null>(null)
   useEffect(() => () => controller.current?.abort(), [session])
   const cache = useQueryClient()
-  const q = useQuery({ queryKey: ['images', session.user.id, page, pageSize], queryFn: async () => (await client.get('/manage/images', { params: { page, size: pageSize, paginated: true } })).data.data as { records: { id: number; publicUrl: string; originalName: string; sizeBytes: number }[]; total: number } })
+  const q = useQuery({ queryKey: ['images', session.user.id, page, pageSize], queryFn: async () => (await client.get('/manage/images', { params: { page, size: pageSize, paginated: true } })).data.data as { records: { id: number; publicUrl: string; originalName: string; sizeBytes: number; uploaderName?: string }[]; total: number } })
   const upload = async (file: File) => {
     if (controller.current) return
     const task = new AbortController(); controller.current = task; setBusy(true)
     try { await uploadImage(file, task.signal); await cache.invalidateQueries({ queryKey: ['images'] }); message.success('图片上传成功') } catch (e) { if (!task.signal.aborted) message.error(errorText(e)) } finally { controller.current = null; setBusy(false) }
   }
-  return <section className="page-fill"><p>图片链接可公开访问。为避免文章图片失效，暂不提供删除入口。</p><input hidden ref={input} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void upload(f) }} /><Button className="self-start" loading={busy} onClick={() => input.current?.click()}>上传图片</Button>{q.isError && <Alert type="error" message={errorText(q.error)} />}<List className="viewport-list flex-1" loading={q.isLoading} dataSource={q.data?.records} renderItem={f => <List.Item><Space wrap><img className="h-20 w-24 object-contain" src={f.publicUrl} alt={f.originalName} /><span>{f.originalName} · {Math.ceil(f.sizeBytes / 1024)} KB</span><a href={f.publicUrl} target="_blank" rel="noreferrer">查看图片</a><Button type="link" onClick={() => void navigator.clipboard.writeText(f.publicUrl).then(() => message.success('链接已复制'), () => message.error('复制失败，请从图片地址栏复制'))}>复制链接</Button></Space></List.Item>} /><Pagination current={page} total={q.data?.total} {...paginationOptions} pageSize={pageSize} onChange={(v, size) => { setPageSize(size); setPage(size === pageSize ? v : 1) }} /></section>
+  const records = q.data?.records ?? []
+  const chosen = records.filter(f => selected.includes(f.id))
+  const removeSelected = async () => {
+    if (deleteLock.current || !chosen.length) return
+    deleteLock.current = true; setDeleting(true); setDeleteErrors([])
+    const failed: number[] = []; const errors: string[] = []; let removed = 0
+    try {
+      for (const file of chosen) {
+        const current = getSession()
+        if (current?.user.id !== session.user.id || current.user.role !== 'ADMIN') { errors.push('登录身份已变化，已停止删除'); break }
+        try { await client.delete(`/manage/images/${file.id}`); removed++ }
+        catch (e) { failed.push(file.id); errors.push(`${file.originalName}：${errorText(e)}`) }
+      }
+      setSelected(failed); setDeleteErrors(errors)
+      if (removed) {
+        message.success(`已删除 ${removed} 张图片`)
+        const lastPage = Math.max(1, Math.ceil(((q.data?.total ?? 0) - removed) / pageSize))
+        if (page > lastPage) setPage(lastPage)
+        await cache.invalidateQueries({ queryKey: ['images'] })
+      }
+    } finally { deleteLock.current = false; setDeleting(false) }
+  }
+  return <section className="page-fill"><p>{session.user.role === 'ADMIN' ? '查看全部用户上传的图片；正在被文章、投稿或头像使用的图片需先解除引用再删除。' : '图片链接可公开访问，此处展示你上传的图片。'}</p><input hidden ref={input} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void upload(f) }} /><Button className="self-start" disabled={deleting} loading={busy} onClick={() => input.current?.click()}>上传图片</Button>{session.user.role === 'ADMIN' && <Space wrap className="my-3"><Checkbox disabled={deleting || q.isFetching || !records.length} checked={!!records.length && chosen.length === records.length} indeterminate={chosen.length > 0 && chosen.length < records.length} onChange={e => setSelected(e.target.checked ? records.map(f => f.id) : [])}>全选当前页</Checkbox><span>已选 {chosen.length} 张</span><Popconfirm title={`确认删除选中的 ${chosen.length} 张图片？`} description="将删除存储中的原图，此操作无法撤销；被引用的图片会保留。" disabled={deleting || !chosen.length} onConfirm={removeSelected}><Button type="link" danger loading={deleting} disabled={!chosen.length || busy || q.isFetching}>删除选中</Button></Popconfirm></Space>}{deleteErrors.length > 0 && <Alert className="mb-3" type="warning" message="部分图片未删除" description={<ul>{deleteErrors.map((error, index) => <li key={index}>{error}</li>)}</ul>} closable onClose={() => setDeleteErrors([])} />}{q.isError && <Alert type="error" message={errorText(q.error)} />}<List className="viewport-list flex-1" loading={q.isLoading} dataSource={q.data?.records} renderItem={f => <List.Item><Space wrap>{session.user.role === 'ADMIN' && <Checkbox aria-label={`选择图片 ${f.originalName}`} checked={selected.includes(f.id)} disabled={deleting || q.isFetching} onChange={e => setSelected(ids => e.target.checked ? [...ids, f.id] : ids.filter(id => id !== f.id))} />}<img className="h-20 w-24 object-contain" src={f.publicUrl} alt={f.originalName} /><span>{f.originalName} · {Math.ceil(f.sizeBytes / 1024)} KB{session.user.role === 'ADMIN' && ` · 上传者：${f.uploaderName ?? '未知用户'}`}</span><a href={f.publicUrl} target="_blank" rel="noreferrer">查看图片</a><Button type="link" onClick={() => void navigator.clipboard.writeText(f.publicUrl).then(() => message.success('链接已复制'), () => message.error('复制失败，请从图片地址栏复制'))}>复制链接</Button>{session.user.role === 'ADMIN' && <Popconfirm disabled={deleting} title="确认删除图片？" description="将删除存储中的原图，CDN缓存可能延迟失效，此操作无法撤销。" onConfirm={async () => { try { await client.delete(`/manage/images/${f.id}`); if (q.data?.records.length === 1 && page > 1) setPage(page - 1); await cache.invalidateQueries({ queryKey: ['images'] }); message.success('图片已删除') } catch (e) { message.error(errorText(e)) } }}><Button type="link" danger disabled={deleting}>删除</Button></Popconfirm>}</Space></List.Item>} /><Pagination disabled={deleting} current={page} total={q.data?.total} {...paginationOptions} pageSize={pageSize} onChange={(v, size) => { setSelected([]); setDeleteErrors([]); setPageSize(size); setPage(size === pageSize ? v : 1) }} /></section>
 }
 type Term = { id: number; name: string; slug: string; count: number }
 export function TaxonomyPage() { return <TaxonomyView /> }

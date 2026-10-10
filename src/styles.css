@@ -58,7 +58,10 @@ body { background: var(--page-bg); color: var(--body-text); }
 .list-viewport .app-main > .page-fill { min-height: 0; }
 .list-viewport .viewport-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .list-viewport .fill-table, .list-viewport .fill-table > .ant-spin-nested-loading, .list-viewport .fill-table .ant-spin-container { min-height: 0; }
-.list-viewport .fill-table .ant-table { flex: 1; min-height: 0; overflow: auto; }
+.list-viewport .fill-table .ant-table { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.list-viewport .fill-table .ant-table-container { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.list-viewport .fill-table .ant-table-content { flex: 1; min-height: 0; overflow: auto !important; overscroll-behavior: contain; }
+.list-viewport .fill-table .ant-table-thead > tr > th { position: sticky; top: 0; z-index: 2; background: var(--soft-bg); }
 .list-viewport .ant-pagination, .list-viewport .pagination-actions { flex-shrink: 0; }
 .list-viewport .taxonomy-panels { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; gap: 20px; padding-bottom: 0; }
 .list-viewport .taxonomy-panel, .list-viewport .taxonomy-panel .ant-card-body { min-height: 0; }

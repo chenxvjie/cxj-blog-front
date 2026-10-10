@@ -28,7 +28,7 @@ export function AdminPosts() {
     <div className="mb-5 flex justify-end"><Select className="min-w-40" aria-label="状态过滤" placeholder="全部状态" allowClear value={status} onChange={v => { setStatus(v); setPage(1) }} options={Object.entries(labels).map(([value, label]) => ({ value, label }))} /></div>
     {query.isError && <Alert type="error" showIcon message={reason(query.error)} />}
     <Table className="fill-table flex-1" scroll={{ x: 1000 }} rowKey="id" loading={query.isLoading} dataSource={query.data?.records ?? []} pagination={{ current: page, total: query.data?.total ?? 0, ...paginationOptions, pageSize, onChange: (v, size) => { setPageSize(size); setPage(size === pageSize ? v : 1) } }} columns={[
-      { title: '标题', dataIndex: 'title' }, { title: '摘要', dataIndex: 'summary', ellipsis: true }, { title: '状态', render: (_, p: Post) => <span>{labels[p.status]}{p.publicStatus === 'PUBLISHED' && p.status !== 'PUBLISHED' ? '（原版仍公开）' : ''}{p.reviewReason && <p>退回原因：{p.reviewReason}</p>}</span> },
+      { title: '标题', dataIndex: 'title', ellipsis: true }, { title: '摘要', dataIndex: 'summary', ellipsis: true }, { title: '状态', width: 180, render: (_, p: Post) => <span>{labels[p.status]}{p.publicStatus === 'PUBLISHED' && p.status !== 'PUBLISHED' ? '（原版仍公开）' : ''}{p.reviewReason && <p>退回原因：{p.reviewReason}</p>}</span> },
       { title: '操作', width: 440, render: (_, post: Post) => <PostActions post={post} /> },
     ]} /></section>
 }
