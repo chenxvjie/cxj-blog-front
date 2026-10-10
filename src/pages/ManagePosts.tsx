@@ -1,12 +1,12 @@
 import { Alert, Button, Form, Input, Select, Space, Table, Switch, message } from 'antd'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { isAxiosError } from 'axios'
 import { PostActions } from '../components/PostActions'
 import { canManagePost } from '../api/permissions'
 import { client } from '../api/client'
-import { getSession, setSession, useSession } from '../api/session'
+import { getSession, useSession } from '../api/session'
 import { imageMarkdown, uploadImage } from '../api/images'
 import { postPayload, type EditablePost as Post } from '../api/postEditor'
 import { ArticleMarkdown } from '../components/ArticleMarkdown'
@@ -22,14 +22,11 @@ export function AdminPosts() {
   const [status, setStatus] = useState<string | undefined>()
   const query = useQuery({ queryKey: ['managed-posts', session?.user.id, page, status], enabled: !!session, queryFn: async () => (await client.get('/manage/posts', { params: { page, size: 10, status } })).data.data as { records: Post[]; total: number } })
   if (!session) return <Navigate to="/auth" replace />
-  const logout = async () => { try { await client.post('/auth/logout'); setSession(null) } catch (error) { message.error(reason(error)) } }
-  return <section><PageMeta title={session.user.role === 'ADMIN' ? '全部文章管理' : '我的投稿'} /><h1 className="mb-4 text-2xl">{session.user.role === 'ADMIN' ? '全部文章管理' : '我的投稿'}</h1>
-    <ManagementLinks />
-    <Select className="mb-4 min-w-36" placeholder="全部状态" allowClear value={status} onChange={v => { setStatus(v); setPage(1) }} options={Object.entries(labels).map(([value, label]) => ({ value, label }))} />
-    <Space className="mb-4"><span>{session.user.nickname}</span><Link to="/admin/editor">新建文章</Link><Button onClick={() => void logout()}>退出登录</Button></Space>
+  return <section className="page-fill"><PageMeta title="文章管理" /><ManagementLinks />
+    <div className="mb-5 flex justify-end"><Select className="min-w-40" aria-label="状态过滤" placeholder="全部状态" allowClear value={status} onChange={v => { setStatus(v); setPage(1) }} options={Object.entries(labels).map(([value, label]) => ({ value, label }))} /></div>
     {query.isError && <Alert type="error" showIcon message={reason(query.error)} />}
-    <Table rowKey="id" loading={query.isLoading} dataSource={query.data?.records ?? []} pagination={{ current: page, total: query.data?.total ?? 0, pageSize: 10, onChange: setPage }} columns={[
-      { title: '标题', dataIndex: 'title' }, { title: '状态', render: (_, p: Post) => <span>{labels[p.status]}{p.publicStatus === 'PUBLISHED' && p.status !== 'PUBLISHED' ? '（原版仍公开）' : ''}{p.reviewReason && <p>退回原因：{p.reviewReason}</p>}</span> },
+    <Table className="fill-table flex-1" scroll={{ x: 700 }} rowKey="id" loading={query.isLoading} dataSource={query.data?.records ?? []} pagination={{ current: page, total: query.data?.total ?? 0, pageSize: 10, onChange: setPage }} columns={[
+      { title: '标题', dataIndex: 'title' }, { title: '摘要', dataIndex: 'summary', ellipsis: true }, { title: '状态', render: (_, p: Post) => <span>{labels[p.status]}{p.publicStatus === 'PUBLISHED' && p.status !== 'PUBLISHED' ? '（原版仍公开）' : ''}{p.reviewReason && <p>退回原因：{p.reviewReason}</p>}</span> },
       { title: '操作', render: (_, post: Post) => <PostActions post={post} /> },
     ]} /></section>
 }
@@ -78,13 +75,13 @@ export function EditorPage() {
       if (uploadController.current === controller) { uploadController.current = null; setUploading(false) }
     }
   }
-  const save = async (values: Post) => { if (uploading || readOnly) return; setSaving(true); try { const payload = postPayload(values, query.data); if (id) await client.put(`/manage/posts/${id}`, payload); else await client.post('/manage/posts', payload); await cache.invalidateQueries(); message.success('文章已保存'); navigate('/admin/posts') } catch (error) { message.error(reason(error)) } finally { setSaving(false) } }
-  return <section><PageMeta title={id ? '编辑文章' : '新建投稿'} /><Link to="/admin/posts">返回文章管理</Link><h1 className="my-4 text-2xl">{id ? '编辑文章' : '新建文章'}</h1>
+  const save = async (values: Post, publish = false) => { if (saving || uploading || readOnly) return; setSaving(true); try { const status = publish ? (admin ? 'PUBLISHED' : 'PENDING') : (admin && id ? query.data?.status ?? 'DRAFT' : 'DRAFT'); const payload = postPayload({ ...values, status }, query.data); if (id) await client.put(`/manage/posts/${id}`, payload); else await client.post('/manage/posts', payload); await cache.invalidateQueries(); message.success('文章已保存'); navigate('/admin/posts') } catch (error) { message.error(reason(error)) } finally { setSaving(false) } }
+  return <section className="page-fill"><PageMeta title="文章管理" /><ManagementLinks />{id && <h2 className="mb-5 text-xl">编辑文章</h2>}
     {query.data?.reviewReason && <Alert type="warning" message={`退回原因：${query.data.reviewReason}`} />}
     {query.data?.publicStatus === 'PUBLISHED' && !admin && <Alert type="info" message="修改另存为投稿版本，审核通过后替换公开文章。撤稿请联系管理员。" />}
     {pending && <div className="my-4"><Alert type="info" message="投稿审核中，撤回后才能编辑。" /><Space className="my-3"><Button loading={saving} onClick={() => void action('withdraw')}>撤回为草稿</Button>{admin && <Button type="primary" loading={saving} onClick={() => void action('review', { approved: true })}>审核通过并发布</Button>}</Space>{admin && <Space><Input maxLength={1000} placeholder="退回原因（必填）" value={reviewReason} onChange={e => setReviewReason(e.target.value)} /><Button danger disabled={!reviewReason.trim()} loading={saving} onClick={() => void action('review', { approved: false, reason: reviewReason })}>退回</Button></Space>}</div>}
     {readOnly && !pending && <Alert type="info" message="作者仍有草稿或退回版本，请等待作者重新提交审核。" />}
-    <Form form={form} layout="vertical" disabled={readOnly} initialValues={{ status: 'DRAFT' }} onFinish={save}>
+    <Form form={form} layout="vertical" disabled={readOnly} initialValues={{ status: 'DRAFT' }} onFinish={v => void save(v)}>
     <Form.Item name="title" label="标题" rules={[{ required: true }]}><Input maxLength={200} /></Form.Item>
     <Form.Item name="slug" label="文章链接标识（发布后固定）" rules={[{ required: true }, { pattern: /^[a-zA-Z0-9_-]+$/, message: '仅使用字母、数字、下划线或短横线' }]}><Input maxLength={240} disabled={readOnly || !!query.data?.publishedAt} /></Form.Item>
     <Form.Item name="summary" label="摘要"><Input.TextArea maxLength={500} /></Form.Item>
@@ -101,7 +98,6 @@ export function EditorPage() {
       {uploadError && <Alert className="mt-2" type="error" showIcon message={uploadError} />}
     </div>
     <Form.Item name="contentMd" label="正文（Markdown）" rules={[{ required: true }]}><Input.TextArea rows={18} /></Form.Item>
-    <Form.Item name="status" label="状态"><Select options={readOnly ? Object.entries(labels).map(([value, label]) => ({ value, label })) : admin ? [{ value: 'DRAFT', label: '草稿' }, { value: 'PUBLISHED', label: '发布' }, { value: 'OFFLINE', label: '下线' }] : [{ value: 'DRAFT', label: '草稿' }, { value: 'PENDING', label: '提交审核' }]} /></Form.Item>
-    <Button htmlType="submit" type="primary" loading={saving} disabled={uploading || readOnly}>保存</Button>
+    <Space wrap><Button htmlType="submit" loading={saving} disabled={uploading || readOnly}>{id ? '保存' : '保存草稿'}</Button><Button type="primary" loading={saving} disabled={uploading || readOnly} onClick={() => { void form.validateFields().then(values => save(values, true)).catch(() => {}) }}>{admin ? '保存并发布' : '保存并投稿'}</Button></Space>
   </Form><Button className="mt-4" onClick={() => setPreview(!preview)}>{preview ? '收起预览' : '预览正文'}</Button>{preview && <div className="prose mt-4"><ArticleMarkdown content={content ?? ''} /></div>}</section>
 }

@@ -4,5 +4,14 @@ html, body, #root { width: 100%; min-width: 100%; height: 100%; min-height: 100%
 body { min-height: 100dvh; font-family: Inter, "Microsoft YaHei", sans-serif; color: #0f172a; }
 a { color: inherit; }
 .app-shell { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
-.app-main { flex: 1 0 auto; }
+.app-main { flex: 1 0 auto; display: flex; flex-direction: column; }
 .app-footer { margin-top: auto; }
+
+.page-fill { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.app-main > .page-fill { min-height: calc(100dvh - 240px); }
+.fill-table, .fill-table > .ant-spin-nested-loading, .fill-table .ant-spin-container { display: flex; flex-direction: column; flex: 1; }
+.app-main .fill-table .ant-table-pagination { margin-top: auto; padding-top: 24px; }
+.taxonomy-panels { display: grid; grid-template-rows: 1fr 1fr; gap: 32px; flex: 1; padding-bottom: 24px; }
+.taxonomy-panel { min-height: 320px; display: flex; flex-direction: column; }
+.taxonomy-panel .ant-card-body { display: flex; flex-direction: column; flex: 1; }
+@media (max-width: 640px) { .taxonomy-panels { grid-template-rows: auto auto; gap: 24px; } }

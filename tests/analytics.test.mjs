@@ -5,6 +5,9 @@ import { moduleUrl } from './load-module.mjs'
 
 const { createAnalytics, publicAnalyticsPath } = await import(moduleUrl(new URL('../src/api/analytics.ts', import.meta.url)))
 const siteId = 'ee599e3ace5bd9241f2039baf24a2bc5'
+test('removed standalone pages do not produce analytics pageviews', () => {
+  for (const path of ['/archive', '/about', '/search']) assert.equal(publicAnalyticsPath(visit(path)), null)
+})
 test('business events require a ready SDK, public route and continued consent', () => {
   const f = fixture(); f.analytics.visit(visit()); f.analytics.event('article_open')
   assert.deepEqual(f.sent, [])
@@ -51,8 +54,8 @@ test('article navigation and back navigation each count once even if the history
   assert.deepEqual(f.sent, [['_trackPageview', '/'], ['_trackPageview', '/posts/test'], ['_trackPageview', '/']])
 })
 test('route changes before SDK load preserve permitted visits without loading twice', () => {
-  const f = fixture(); f.analytics.visit(visit()); f.analytics.visit(visit('/archive', 'b')); f.ready()
-  assert.equal(f.loads.length, 1); assert.deepEqual(f.sent, [['_trackPageview', '/'], ['_trackPageview', '/archive']])
+  const f = fixture(); f.analytics.visit(visit()); f.analytics.visit(visit('/tags', 'b')); f.ready()
+  assert.equal(f.loads.length, 1); assert.deepEqual(f.sent, [['_trackPageview', '/'], ['_trackPageview', '/tags']])
 })
 test('direct login, management, search, unknown and parameterized routes never load', () => {
   for (const v of [visit('/auth'), visit('/admin/editor'), visit('/search'), visit('/not-found'),
@@ -63,13 +66,13 @@ test('direct login, management, search, unknown and parameterized routes never l
 test('private route disables loaded SDK; returning to public resumes with one PV', () => {
   const f = fixture(); f.analytics.visit(visit()); f.ready(); f.analytics.visit(visit('/admin/editor', 'b'))
   assert.deepEqual(f.enabled, [false]); assert.equal(f.sent.length, 1)
-  f.analytics.visit(visit('/about', 'c')); assert.deepEqual(f.enabled, [false, true]); assert.equal(f.loads.length, 1)
-  assert.deepEqual(f.sent.at(-1), ['_trackPageview', '/about'])
+  f.analytics.visit(visit('/privacy', 'c')); assert.deepEqual(f.enabled, [false, true]); assert.equal(f.loads.length, 1)
+  assert.deepEqual(f.sent.at(-1), ['_trackPageview', '/privacy'])
 })
 test('revoking consent prevents subsequent route reports, regrant counts only current page', () => {
-  const f = fixture(); f.analytics.visit(visit()); f.ready(); f.choose('denied'); f.analytics.visit(visit('/about', 'b'))
+  const f = fixture(); f.analytics.visit(visit()); f.ready(); f.choose('denied'); f.analytics.visit(visit('/privacy', 'b'))
   assert.deepEqual(f.enabled, [false]); assert.equal(f.sent.length, 1)
-  f.choose('granted'); f.choose('granted'); assert.equal(f.sent.length, 2); assert.deepEqual(f.sent.at(-1), ['_trackPageview', '/about'])
+  f.choose('granted'); f.choose('granted'); assert.equal(f.sent.length, 2); assert.deepEqual(f.sent.at(-1), ['_trackPageview', '/privacy'])
 })
 test('revocation during load discards queued visits and late onload cannot send', () => {
   const f = fixture(); f.analytics.visit(visit()); f.choose('denied'); f.ready(); assert.deepEqual(f.sent, [])
@@ -80,6 +83,6 @@ test('private navigation while loading prevents late callback from leaking any P
   assert.deepEqual(f.sent, []); assert.deepEqual(f.enabled, [false])
 })
 test('blocked third-party script does not cause retries or unhandled route errors', () => {
-  const f = fixture(); f.analytics.visit(visit()); f.fail(); f.analytics.visit(visit('/about', 'b'))
+  const f = fixture(); f.analytics.visit(visit()); f.fail(); f.analytics.visit(visit('/privacy', 'b'))
   assert.equal(f.loads.length, 1); assert.deepEqual(f.sent, [])
 })

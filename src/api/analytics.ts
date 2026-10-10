@@ -12,7 +12,7 @@ export type AnalyticsPort = {
 
 export function publicAnalyticsPath(visit: AnalyticsVisit): string | null {
   if (visit.origin !== 'https://chenxujie-bolg.cn' || visit.search || visit.hash) return null
-  if (['/', '/about', '/archive', '/tags', '/privacy'].includes(visit.pathname)) return visit.pathname
+  if (['/', '/tags', '/privacy'].includes(visit.pathname)) return visit.pathname
   return /^\/posts\/[a-zA-Z0-9_-]+$/.test(visit.pathname) ? visit.pathname : null
 }
 

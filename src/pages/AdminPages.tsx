@@ -1,1 +1,1 @@
-export { MediaPage, SettingsPage } from './PortalPages'
+export { MediaPage } from './PortalPages'

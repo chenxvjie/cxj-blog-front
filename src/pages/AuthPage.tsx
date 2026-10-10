@@ -69,7 +69,7 @@ function AuthForm({ mode }: { mode: 'login' | 'register' | 'password' }) {
 export function AuthPage() {
   const session = useSession()
   if (session) return <Navigate to="/admin/posts" replace />
-  return <section className="mx-auto max-w-md"><PageMeta title="登录或注册" />
+  return <section className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10"><PageMeta title="登录或注册" />
     {import.meta.env.DEV && <Alert className="mb-4" type="info" showIcon message="本地开发模式" description="密码登录只需本地后端和数据库。邮箱验证码与极验默认停用，验证码登录及注册会提示中止，不会模拟成功。" />}
     <Card title="欢迎来到 CXJ Blog"><p>登录状态保留 24 小时，公共设备使用后请退出登录。</p><Tabs items={[
       { key: 'password', label: '密码登录', children: <AuthForm mode="password" /> },
