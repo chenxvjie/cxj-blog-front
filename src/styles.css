@@ -68,3 +68,7 @@ body { background: var(--page-bg); color: var(--body-text); }
 .list-viewport .taxonomy-panel .ant-card-head, .list-viewport .taxonomy-panel .ant-btn-block { flex-shrink: 0; }
 .list-viewport .taxonomy-panel .ant-card-body { padding: 12px 20px; }
 .list-viewport .pagination-actions, .list-viewport .fill-table .ant-table-pagination { padding-top: 12px; }
+
+/* Article reading shares the viewport while keeping the legal footer visible. */
+.list-viewport .article-detail { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.list-viewport .article-detail > div { flex-shrink: 0; }
