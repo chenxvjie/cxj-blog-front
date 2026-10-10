@@ -44,3 +44,24 @@ body { background: var(--page-bg); color: var(--body-text); }
 .prose blockquote { border-left: 3px solid var(--line-color); padding-left: 16px; color: var(--muted-text); }
 .prose table { border-collapse: collapse; }
 .prose th, .prose td { border: 1px solid var(--line-color); padding: 8px 12px; }
+
+.article-card-layout { display: flex; align-items: stretch; gap: 24px; }
+.article-card-cover { position: relative; display: block; flex: 0 0 28%; min-width: 0; min-height: 128px; align-self: stretch; overflow: hidden; border-radius: 8px; }
+.article-card-cover img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.article-card-layout h2, .article-card-layout p { overflow-wrap: anywhere; }
+@media (max-width: 640px) { .article-card-layout { gap: 12px; } .article-card-cover { flex-basis: 30%; min-height: 88px; } }
+
+/* Management lists reserve space for header, pagination and legal footer. */
+.list-viewport.app-shell { height: 100dvh; min-height: 0; overflow: hidden; }
+.list-viewport > header, .list-viewport > footer { flex-shrink: 0; }
+.list-viewport .app-main { flex: 1; min-height: 0; overflow: hidden; padding-bottom: 20px; }
+.list-viewport .app-main > .page-fill { min-height: 0; }
+.list-viewport .viewport-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.list-viewport .fill-table, .list-viewport .fill-table > .ant-spin-nested-loading, .list-viewport .fill-table .ant-spin-container { min-height: 0; }
+.list-viewport .fill-table .ant-table { flex: 1; min-height: 0; overflow: auto; }
+.list-viewport .ant-pagination, .list-viewport .pagination-actions { flex-shrink: 0; }
+.list-viewport .taxonomy-panels { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; gap: 20px; padding-bottom: 0; }
+.list-viewport .taxonomy-panel, .list-viewport .taxonomy-panel .ant-card-body { min-height: 0; }
+.list-viewport .taxonomy-panel .ant-card-head, .list-viewport .taxonomy-panel .ant-btn-block { flex-shrink: 0; }
+.list-viewport .taxonomy-panel .ant-card-body { padding: 12px 20px; }
+.list-viewport .pagination-actions, .list-viewport .fill-table .ant-table-pagination { padding-top: 12px; }

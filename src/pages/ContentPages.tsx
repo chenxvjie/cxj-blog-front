@@ -1,3 +1,4 @@
+import { paginationOptions } from '../api/pagination'
 import { Alert, Card, Empty, Input, List, Pagination, Select, Space, Tag } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -14,14 +15,15 @@ export function PublicPosts({ author }: { author?: string }) {
   const [params, setParams] = useSearchParams()
   const taxonomy = useTaxonomy()
   const page = Math.max(1, Number(params.get('page')) || 1)
+  const pageSize = [10, 20, 50].includes(Number(params.get('size'))) ? Number(params.get('size')) : 20
   const q = params.get('q') ?? ''
   const category = params.get('category') ?? undefined
   const tag = params.get('tag') ?? undefined
-  const posts = useQuery({ queryKey: ['posts', page, q, category, tag, author], queryFn: async () => (await client.get('/posts', { params: { page, size: 20, q, category, tag, author } })).data.data as Page<BlogPost> })
+  const posts = useQuery({ queryKey: ['posts', page, pageSize, q, category, tag, author], queryFn: async () => (await client.get('/posts', { params: { page, size: pageSize, q, category, tag, author } })).data.data as Page<BlogPost> })
   const change = (key: string, value?: string | number) => { if (key !== 'page') baidu.event(key === 'q' ? 'search' : 'taxonomy_filter'); const next = new URLSearchParams(params); next.delete('page'); if (value) next.set(key, String(value)); else next.delete(key); setParams(next) }
   return <div className="page-fill"><Space wrap className="my-5"><Input.Search key={q} defaultValue={q} maxLength={100} placeholder="搜索标题或正文" onSearch={v => change('q', v.trim())} allowClear /><Select className="min-w-36" placeholder="全部分类" value={category ? Number(category) : undefined} allowClear options={taxonomy.data?.categories.map(t => ({ value: t.id, label: t.name }))} onChange={v => change('category', v)} /><Select className="min-w-36" placeholder="全部标签" value={tag ? Number(tag) : undefined} allowClear options={taxonomy.data?.tags.map(t => ({ value: t.id, label: t.name }))} onChange={v => change('tag', v)} /></Space>
-    {posts.isError ? <Alert type="error" message={errorText(posts.error)} /> : <List className="flex-1" loading={posts.isLoading} dataSource={posts.data?.records} locale={{ emptyText: <Empty description="没有匹配的已发布文章" /> }} renderItem={p => <List.Item className="!block"><Card cover={p.coverUrl ? <img className="max-h-72 object-cover" loading="lazy" src={p.coverUrl} alt={p.title} /> : undefined}><Space wrap>{p.isTop && <Tag color="gold">置顶</Tag>}{p.categoryName && <Link to={`/?category=${p.categoryId}`}><Tag>{p.categoryName}</Tag></Link>}{p.tags?.map(t => <Link key={t.id} to={`/?tag=${t.id}`}><Tag>{t.name}</Tag></Link>)}</Space><Link to={`/posts/${p.slug}`} onClick={() => baidu.event('article_open')}><h2 className="my-3 text-xl">{p.title}</h2></Link><p>{p.summary}</p><Space><span>{p.publishedAt && new Date(p.publishedAt).toLocaleDateString()}</span><Link to={`/authors/${p.authorId}`}>{p.authorName ?? '作者'}</Link></Space></Card></List.Item>} />}
-    <Pagination className="mt-auto pt-6" current={page} total={posts.data?.total ?? 0} pageSize={20} showSizeChanger={false} onChange={v => change('page', v)} />
+    {posts.isError ? <Alert type="error" message={errorText(posts.error)} /> : <List className="flex-1" loading={posts.isLoading} dataSource={posts.data?.records} locale={{ emptyText: <Empty description="没有匹配的已发布文章" /> }} renderItem={p => <List.Item className="!block"><Card><div className="article-card-layout"><div className="min-w-0 flex-1"><Space wrap>{p.isTop && <Tag color="gold">置顶</Tag>}{p.categoryName && <Link to={`/?category=${p.categoryId}`}><Tag>{p.categoryName}</Tag></Link>}{p.tags?.map(t => <Link key={t.id} to={`/?tag=${t.id}`}><Tag>{t.name}</Tag></Link>)}</Space><Link to={`/posts/${p.slug}`} onClick={() => baidu.event('article_open')}><h2 className="my-3 text-xl">{p.title}</h2></Link><p>{p.summary}</p><Space><span>{p.publishedAt && new Date(p.publishedAt).toLocaleDateString()}</span><Link to={`/authors/${p.authorId}`}>{p.authorName ?? '作者'}</Link></Space></div>{p.coverUrl && <Link className="article-card-cover" to={`/posts/${p.slug}`} aria-label={`阅读${p.title}`} onClick={() => baidu.event('article_open')}><img loading="lazy" src={p.coverUrl} alt={p.title} /></Link>}</div></Card></List.Item>} />}
+    <Pagination className="mt-auto pt-6" current={page} total={posts.data?.total ?? 0} {...paginationOptions} pageSize={pageSize} onChange={(v, size) => { const next = new URLSearchParams(params); next.set('size', String(size)); next.set('page', String(size === pageSize ? v : 1)); setParams(next) }} />
   </div>
 }
 export function HomePage() {

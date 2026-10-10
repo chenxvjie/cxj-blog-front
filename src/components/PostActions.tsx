@@ -43,9 +43,9 @@ export function PostActions({ post, returnHome = false }: { post: { id: number; 
     } catch (e) { message.error(isAxiosError(e) ? e.response?.data?.message ?? '修改失败' : '修改失败') }
     finally { setBusy(false) }
   }
-  return <><Space className="my-3" wrap><Link to={`/admin/editor?id=${post.id}`}>编辑</Link>{available.map(option => option.value === 'REJECTED'
-    ? <Button key={option.value} disabled={busy || deleting} onClick={() => { setStatus(option.value); setReason(''); setOpen(true) }}>{option.label}</Button>
-    : <Popconfirm key={option.value} title={`确认${option.label}？`} onConfirm={() => changeStatus(option.value)} disabled={busy || deleting}><Button disabled={busy || deleting}>{option.label}</Button></Popconfirm>)}<Popconfirm title="确定删除这篇文章？" onConfirm={remove}><Button danger loading={deleting} disabled={busy}>删除</Button></Popconfirm></Space>
+  return <><Space className="my-3 whitespace-nowrap" size={8}><Link to={`/admin/editor?id=${post.id}`}>编辑</Link>{available.map(option => option.value === 'REJECTED'
+    ? <Button type="link" key={option.value} disabled={busy || deleting} onClick={() => { setStatus(option.value); setReason(''); setOpen(true) }}>{option.label}</Button>
+    : <Popconfirm key={option.value} title={`确认${option.label}？`} onConfirm={() => changeStatus(option.value)} disabled={busy || deleting}><Button type="link" disabled={busy || deleting}>{option.label}</Button></Popconfirm>)}<Popconfirm title="确定删除这篇文章？" onConfirm={remove}><Button type="link" danger loading={deleting} disabled={busy}>删除</Button></Popconfirm></Space>
     <Modal open={open} title="退回作者" onCancel={() => setOpen(false)} confirmLoading={busy} okButtonProps={{ disabled: !reason.trim() }} onOk={() => changeStatus(status!)}><Input.TextArea placeholder="请填写退回原因" maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} /></Modal>
   </>
 }

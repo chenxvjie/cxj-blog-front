@@ -1,3 +1,4 @@
+import { paginationOptions } from '../api/pagination'
 import { Alert, Button, Form, Input, Select, Space, Table, Switch, message } from 'antd'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
@@ -19,15 +20,16 @@ function reason(error: unknown) { return isAxiosError(error) ? error.response?.d
 export function AdminPosts() {
   const session = useSession()
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [status, setStatus] = useState<string | undefined>()
-  const query = useQuery({ queryKey: ['managed-posts', session?.user.id, page, status], enabled: !!session, queryFn: async () => (await client.get('/manage/posts', { params: { page, size: 10, status } })).data.data as { records: Post[]; total: number } })
+  const query = useQuery({ queryKey: ['managed-posts', session?.user.id, page, pageSize, status], enabled: !!session, queryFn: async () => (await client.get('/manage/posts', { params: { page, size: pageSize, status } })).data.data as { records: Post[]; total: number } })
   if (!session) return <Navigate to="/auth" replace />
   return <section className="page-fill"><PageMeta title="文章管理" /><ManagementLinks />
     <div className="mb-5 flex justify-end"><Select className="min-w-40" aria-label="状态过滤" placeholder="全部状态" allowClear value={status} onChange={v => { setStatus(v); setPage(1) }} options={Object.entries(labels).map(([value, label]) => ({ value, label }))} /></div>
     {query.isError && <Alert type="error" showIcon message={reason(query.error)} />}
-    <Table className="fill-table flex-1" scroll={{ x: 700 }} rowKey="id" loading={query.isLoading} dataSource={query.data?.records ?? []} pagination={{ current: page, total: query.data?.total ?? 0, pageSize: 10, onChange: setPage }} columns={[
+    <Table className="fill-table flex-1" scroll={{ x: 1000 }} rowKey="id" loading={query.isLoading} dataSource={query.data?.records ?? []} pagination={{ current: page, total: query.data?.total ?? 0, ...paginationOptions, pageSize, onChange: (v, size) => { setPageSize(size); setPage(size === pageSize ? v : 1) } }} columns={[
       { title: '标题', dataIndex: 'title' }, { title: '摘要', dataIndex: 'summary', ellipsis: true }, { title: '状态', render: (_, p: Post) => <span>{labels[p.status]}{p.publicStatus === 'PUBLISHED' && p.status !== 'PUBLISHED' ? '（原版仍公开）' : ''}{p.reviewReason && <p>退回原因：{p.reviewReason}</p>}</span> },
-      { title: '操作', render: (_, post: Post) => <PostActions post={post} /> },
+      { title: '操作', width: 440, render: (_, post: Post) => <PostActions post={post} /> },
     ]} /></section>
 }
 export function EditorPage() {
@@ -91,7 +93,7 @@ export function EditorPage() {
     {readOnly && !pending && <Alert type="info" message="作者仍有草稿或退回版本，请等待作者重新提交审核。" />}
     <Form form={form} layout="vertical" disabled={readOnly} initialValues={{ status: 'DRAFT' }} onFinish={v => void save(v)}>
     <Form.Item name="title" label="标题" rules={[{ required: true }]}><Input maxLength={200} /></Form.Item>
-    <Form.Item name="slug" label="文章链接标识（发布后固定）" extra="用于文章网址，例如 spring-boot-guide → /posts/spring-boot-guide。长度1–240位，只能使用英文字母、数字、短横线和下划线，不能包含中文、空格或斜杠；不可与其他文章重复，发布后不能修改。" rules={[{ required: true, message: '请输入文章链接标识' }, { pattern: /^[a-zA-Z0-9_-]{1,240}$/, message: '请输入1–240位英文字母、数字、短横线或下划线，不支持中文、空格、斜杠' }]}><Input placeholder="例如 spring-boot-guide" maxLength={240} showCount disabled={readOnly || !!query.data?.publishedAt} /></Form.Item>
+    <Form.Item name="slug" label="文章链接标识（发布后固定）" extra={`用于文章网址，例如 spring-boot-guide → /posts/spring-boot-guide。长度${id ? '1–240' : '4–30'}位，只能使用英文字母、数字、短横线和下划线，不能包含中文、空格或斜杠；不可与其他文章重复，发布后不能修改。`} rules={[{ required: true, message: '请输入文章链接标识' }, { pattern: id ? /^[a-zA-Z0-9_-]{1,240}$/ : /^[a-zA-Z0-9_-]{4,30}$/, message: `请输入${id ? '1–240' : '4–30'}位英文字母、数字、短横线或下划线，不支持中文、空格、斜杠` }]}><Input placeholder="例如 spring-boot-guide" maxLength={id ? 240 : 30} showCount disabled={readOnly || !!query.data?.publishedAt} /></Form.Item>
     <Form.Item name="summary" label="摘要"><Input.TextArea maxLength={500} /></Form.Item>
     <div className="grid grid-cols-2 gap-6"><Form.Item name="categoryId" label="分类"><Select allowClear options={taxonomy.data?.categories.map(t => ({ value: t.id, label: t.name }))} onClear={() => form.setFieldValue('categoryId', null)} /></Form.Item>
     <Form.Item name="tagIds" label="标签"><Select mode="multiple" maxCount={20} options={taxonomy.data?.tags.map(t => ({ value: t.id, label: t.name }))} /></Form.Item></div>
@@ -110,6 +112,6 @@ export function EditorPage() {
       {uploadError && <Alert className="mt-2" type="error" showIcon message={uploadError} />}
     </div>
     <Form.Item name="contentMd" label="正文（Markdown）" rules={[{ required: true }]}><Input.TextArea rows={18} /></Form.Item>
-    <Space wrap><Button htmlType="submit" loading={saving} disabled={uploading || readOnly}>{id ? '保存' : '保存草稿'}</Button><Button type="primary" loading={saving} disabled={uploading || readOnly} onClick={() => { void form.validateFields().then(values => save(values, true)).catch(() => {}) }}>{admin ? '保存并发布' : '保存并投稿'}</Button></Space>
-  </Form><Button className="mt-4 self-start" onClick={() => setPreview(!preview)}>{preview ? '收起预览' : '预览正文'}</Button>{preview && <div className="prose mt-4"><ArticleMarkdown content={content ?? ''} /></div>}</section>
+    <Space wrap><Button htmlType="submit" loading={saving} disabled={uploading || readOnly}>{id ? '保存' : '保存草稿'}</Button><Button type="primary" loading={saving} disabled={uploading || readOnly} onClick={() => { void form.validateFields().then(values => save(values, true)).catch(() => {}) }}>{admin ? '保存并发布' : '保存并投稿'}</Button><Button htmlType="button" onClick={() => setPreview(!preview)}>{preview ? '收起预览' : '预览正文'}</Button></Space>
+  </Form>{preview && <div className="prose mt-4"><ArticleMarkdown content={content ?? ''} /></div>}</section>
 }
