@@ -45,7 +45,9 @@ export const baidu = createAnalytics({
     const script = document.createElement('script')
     script.id = 'baidu-analytics'
     script.async = true
-    script.referrerPolicy = 'no-referrer'
+    // Baidu returns an empty SDK without a Referer. Send only the site origin,
+    // never article paths or search parameters.
+    script.referrerPolicy = 'origin'
     script.onload = ready
     script.onerror = () => { script.remove(); failed() }
     try {

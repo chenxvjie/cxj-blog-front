@@ -40,7 +40,7 @@ test('browser adapter waits for consent and only creates one HTTPS async script'
     f.api.setAnalyticsConsent('granted')
     assert.equal(f.scripts.length, 1)
     assert.equal(f.scripts[0].src, 'https://hm.baidu.com/hm.js?ee599e3ace5bd9241f2039baf24a2bc5')
-    assert.equal(f.scripts[0].async, true); assert.equal(f.scripts[0].referrerPolicy, 'no-referrer')
+    assert.equal(f.scripts[0].async, true); assert.equal(f.scripts[0].referrerPolicy, 'origin')
     assert.deepEqual(f.window._hmt, [['_setAutoPageview', false], ['_setAutoEventTracking', false]])
     f.scripts[0].onload(); f.api.baidu.visit(visit)
     assert.equal(f.scripts.length, 1)

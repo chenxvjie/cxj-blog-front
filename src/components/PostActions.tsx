@@ -1,4 +1,4 @@
-import { Button, Input, Modal, Popconfirm, Select, Space, message } from 'antd'
+import { Button, Input, Modal, Popconfirm, Space, message } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -30,12 +30,22 @@ export function PostActions({ post, returnHome = false }: { post: { id: number; 
   }
   const admin = session?.user.role === 'ADMIN'
   const pending = post.status === 'PENDING'
-  const options = pending ? [{ value: 'DRAFT', label: '撤回为草稿' }, ...(admin ? [{ value: 'PUBLISHED', label: '审核通过并发布' }, { value: 'REJECTED', label: '退回作者' }] : [])] : admin ? (post.hasSubmission ? [] : [{ value: 'DRAFT', label: '草稿' }, { value: 'PUBLISHED', label: '发布' }, { value: 'OFFLINE', label: '下线' }]) : post.hasSubmission ? [{ value: 'PENDING', label: '提交审核' }] : []
-  return <><Space className="my-3" wrap><Link to={`/admin/editor?id=${post.id}`}>编辑</Link><Button disabled={!options.length} onClick={() => { setStatus(undefined); setReason(''); setOpen(true) }}>修改状态</Button><Popconfirm title="确定删除这篇文章？" onConfirm={remove}><Button danger loading={deleting}>删除</Button></Popconfirm></Space>
-    <Modal open={open} title="修改文章状态" onCancel={() => setOpen(false)} confirmLoading={busy} okButtonProps={{ disabled: !status || (status === 'REJECTED' && !reason.trim()) }} onOk={async () => { setBusy(true); try {
-      if (pending && ['PUBLISHED', 'REJECTED'].includes(status!)) await client.post(`/manage/posts/${post.id}/review`, { approved: status === 'PUBLISHED', reason })
-      else await client.put(`/manage/posts/${post.id}/status`, { status })
-      await cache.invalidateQueries(); setOpen(false); message.success('状态已更新')
-    } catch (e) { message.error(isAxiosError(e) ? e.response?.data?.message ?? '修改失败' : '修改失败') } finally { setBusy(false) } }}><Select className="w-full" placeholder="选择目标状态" value={status} options={options} onChange={setStatus} />{status === 'REJECTED' && <Input.TextArea className="mt-4" placeholder="退回原因" maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} />}</Modal>
+  const options = pending ? [{ value: 'DRAFT', label: '撤回为草稿' }, ...(admin ? [{ value: 'PUBLISHED', label: '审核通过并发布' }, { value: 'REJECTED', label: '退回作者' }] : [])] : admin ? (post.hasSubmission ? [] : [{ value: 'DRAFT', label: '转为草稿' }, { value: 'PUBLISHED', label: '发布' }, { value: 'OFFLINE', label: '下架' }]) : post.hasSubmission ? [{ value: 'PENDING', label: '提交投稿' }] : []
+  const available = options.filter(option => option.value !== post.status)
+  const changeStatus = async (target: string) => {
+    setBusy(true)
+    try {
+      if (pending && ['PUBLISHED', 'REJECTED'].includes(target)) await client.post(`/manage/posts/${post.id}/review`, { approved: target === 'PUBLISHED', reason })
+      else await client.put(`/manage/posts/${post.id}/status`, { status: target })
+      await cache.invalidateQueries()
+      setOpen(false)
+      message.success('状态已更新')
+    } catch (e) { message.error(isAxiosError(e) ? e.response?.data?.message ?? '修改失败' : '修改失败') }
+    finally { setBusy(false) }
+  }
+  return <><Space className="my-3" wrap><Link to={`/admin/editor?id=${post.id}`}>编辑</Link>{available.map(option => option.value === 'REJECTED'
+    ? <Button key={option.value} disabled={busy || deleting} onClick={() => { setStatus(option.value); setReason(''); setOpen(true) }}>{option.label}</Button>
+    : <Popconfirm key={option.value} title={`确认${option.label}？`} onConfirm={() => changeStatus(option.value)} disabled={busy || deleting}><Button disabled={busy || deleting}>{option.label}</Button></Popconfirm>)}<Popconfirm title="确定删除这篇文章？" onConfirm={remove}><Button danger loading={deleting} disabled={busy}>删除</Button></Popconfirm></Space>
+    <Modal open={open} title="退回作者" onCancel={() => setOpen(false)} confirmLoading={busy} okButtonProps={{ disabled: !reason.trim() }} onOk={() => changeStatus(status!)}><Input.TextArea placeholder="请填写退回原因" maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} /></Modal>
   </>
 }

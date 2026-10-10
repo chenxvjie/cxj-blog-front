@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+:root { --page-bg: #f8fafc; --panel-bg: #ffffff; --soft-bg: #f1f5f9; --body-text: #0f172a; --muted-text: #64748b; --line-color: #d1d5db; }
+:root.dark { --page-bg: #0f172a; --panel-bg: #1e293b; --soft-bg: #334155; --body-text: #e2e8f0; --muted-text: #94a3b8; --line-color: #475569; }
 html, body, #root { width: 100%; min-width: 100%; height: 100%; min-height: 100%; margin: 0; }
 * { box-sizing: border-box; }
 body { min-height: 100dvh; font-family: Inter, "Microsoft YaHei", sans-serif; color: #0f172a; }
@@ -15,3 +18,29 @@ a { color: inherit; }
 .taxonomy-panel { min-height: 320px; display: flex; flex-direction: column; }
 .taxonomy-panel .ant-card-body { display: flex; flex-direction: column; flex: 1; }
 @media (max-width: 640px) { .taxonomy-panels { grid-template-rows: auto auto; gap: 24px; } }
+
+/* Keep standalone, table and button-based pagination aligned consistently. */
+.app-main .ant-pagination { display: flex; justify-content: flex-end; }
+.app-main .pagination-actions { display: flex; justify-content: flex-end; width: 100%; margin-top: auto; padding-top: 24px; }
+
+.header-navigation.ant-menu-horizontal { height: 46px; line-height: 46px; }
+.header-account-trigger.ant-btn { height: 46px; width: 64px; flex-shrink: 0; border-radius: 0; }
+.header-navigation.ant-menu-horizontal > .ant-menu-item + .ant-menu-item::before { content: ''; position: absolute; left: 0; top: 50%; height: 16px; border-left: 1px solid #d1d5db; transform: translateY(-50%); }
+.dark .header-navigation.ant-menu-horizontal > .ant-menu-item + .ant-menu-item::before { border-left-color: #64748b; }
+
+body { background: var(--page-bg); color: var(--body-text); }
+.app-shell.ant-layout { background: var(--page-bg); color: var(--body-text); }
+.app-footer { border-color: var(--line-color); color: var(--muted-text); }
+.dark .bg-white { background-color: var(--panel-bg); }
+.dark .bg-slate-50 { background-color: var(--soft-bg); }
+.dark .text-slate-700 { color: var(--body-text); }
+.dark .text-gray-500, .dark .text-slate-500 { color: var(--muted-text); }
+.dark .border-slate-200, .dark .border-slate-300, .dark .border-t { border-color: var(--line-color); }
+.prose { color: var(--body-text); }
+.prose a { color: #0284c7; text-decoration: underline; }
+.dark .prose a { color: #7dd3fc; }
+.prose pre, .prose code { background: var(--soft-bg); border-radius: 4px; }
+.prose pre { padding: 16px; overflow-x: auto; }
+.prose blockquote { border-left: 3px solid var(--line-color); padding-left: 16px; color: var(--muted-text); }
+.prose table { border-collapse: collapse; }
+.prose th, .prose td { border: 1px solid var(--line-color); padding: 8px 12px; }

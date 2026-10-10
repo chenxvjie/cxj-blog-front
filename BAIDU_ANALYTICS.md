@@ -7,7 +7,7 @@
 `.env.production` 配置 VITE_BAIDU_ANALYTICS_ID，正常执行 pnpm build 即会包含它。云效无需额外添加同名变量；如已定义该变量，构建环境优先，需确保没有空值或旧 ID 覆盖。通过空字符串覆盖后重新构建可以关闭统计。
 Docker 构建允许复制此公开生产配置。开发环境、非 https://chenxujie-bolg.cn 域名、无效或空 ID 不加载 SDK。
 
-仅在用户同意后动态加载 HTTPS hm.js。公开路径白名单：首页、文章详情、归档、标签、关于和隐私页。登录、管理、搜索、404、带 query 或 hash 的页面不纳入此次统计，以避免将搜索词或 URL 参数送入统计。后端业务表和文章页面 viewCount 不由此改动，数据先在百度统计后台查看。
+仅在用户同意后动态加载 HTTPS hm.js。公开路径白名单：首页、文章详情、分类与标签和隐私页。登录、管理、搜索、404、带 query 或 hash 的页面不纳入此次统计，以避免将搜索词或 URL 参数送入统计。后端业务表和文章页面 viewCount 不由此改动，数据先在百度统计后台查看。
 
 加载前关闭自动 PV 与全埋点点击，通过前端路由统一发送 _trackPageview；百度控制台的“单页应用自动统计”必须保持关闭，不额外注入基础代码、不启用 UrlChangeTracker 或自动热力图/全埋点采集，避免重复或超范围上报。
 路由切换、返回同一路径会按实际访问计数；StrictMode 重复通知不会产生双份 PV。脚本被拦截不会阻塞博客，重新加载页面可再尝试加载。
@@ -37,3 +37,7 @@ UV 是百度按浏览器标识等规则估计的访客数，不等于注册用�
 - https://tongji.baidu.com/web/help/article?id=324&type=0
 - https://tongji.baidu.com/web/help/article?id=363&type=0
 - https://tongji.baidu.com/web/help/article?id=330&type=0
+
+## 2026-10-10 空脚本修复
+
+生产资源已确认包含正确统计ID和加载代码。对同一hm.js地址分别请求：无Referer返回200、text/plain、0字节；仅增加Referer=https://chenxujie-bolg.cn/后返回200、application/javascript、29903字节，含_hmt与_trackPageview实现。原加载代码指定no-referrer，导致此环境下拿到空脚本。改为referrerPolicy=origin，只发送网站域名，不发送文章路径和查询参数。此修复需前端重新构建部署；部署后仍须在用户浏览器确认非空hm.js及后续PV请求，不能用200状态或报表等待时间替代验收。

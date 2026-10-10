@@ -68,13 +68,14 @@ function AuthForm({ mode }: { mode: 'login' | 'register' | 'password' }) {
 }
 export function AuthPage() {
   const session = useSession()
+  const [mode, setMode] = useState('password')
   if (session) return <Navigate to="/admin/posts" replace />
   return <section className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10"><PageMeta title="登录或注册" />
     {import.meta.env.DEV && <Alert className="mb-4" type="info" showIcon message="本地开发模式" description="密码登录只需本地后端和数据库。邮箱验证码与极验默认停用，验证码登录及注册会提示中止，不会模拟成功。" />}
-    <Card title="欢迎来到 CXJ Blog"><p>登录状态保留 24 小时，公共设备使用后请退出登录。</p><Tabs items={[
+    <Card title="欢迎来到 CXJ Blog"><p>登录状态保留 24 小时，公共设备使用后请退出登录。</p><Tabs activeKey={mode} onChange={setMode} items={[
       { key: 'password', label: '密码登录', children: <AuthForm mode="password" /> },
       { key: 'login', label: '验证码登录', children: <AuthForm mode="login" /> },
       { key: 'register', label: '注册', children: <AuthForm mode="register" /> },
-    ]} /><Alert className="mt-4" type="info" showIcon message="邮箱验证码登录" description="获取验证码需先完成人机验证。验证时将加载极验第三方服务；请勿向他人透露邮箱验证码。" /></Card>
+    ]} />{mode !== 'password' && <Alert style={{ marginTop: 24 }} type="info" showIcon message={mode === 'register' ? '邮箱验证码注册' : '邮箱验证码登录'} description="获取验证码需先完成人机验证。验证时将加载极验第三方服务；请勿向他人透露邮箱验证码。" />}</Card>
   </section>
 }

@@ -44,6 +44,9 @@ export function EditorPage() {
   const [reviewReason, setReviewReason] = useState('')
   const taxonomy = useQuery({ queryKey: ['taxonomy'], queryFn: async () => (await client.get('/taxonomy')).data.data as { categories: { id: number; name: string }[]; tags: { id: number; name: string }[] } })
   const content = Form.useWatch('contentMd', form)
+  const coverUrl = Form.useWatch('coverUrl', form)
+  const coverInput = useRef<HTMLInputElement>(null)
+  const [uploadTarget, setUploadTarget] = useState<'body' | 'cover'>('body')
   const fileInput = useRef<HTMLInputElement>(null)
   const uploadController = useRef<AbortController | null>(null)
   useEffect(() => () => { uploadController.current?.abort() }, [id, session])
@@ -57,14 +60,19 @@ export function EditorPage() {
   const pending = query.data?.status === 'PENDING'
   const readOnly = pending || (admin && !!query.data?.hasSubmission)
   const action = async (path: string, body?: unknown) => { setSaving(true); try { await client.post(`/manage/posts/${id}/${path}`, body); await cache.invalidateQueries(); message.success('操作成功') } catch (e) { message.error(reason(e)) } finally { setSaving(false) } }
-  const addImage = async (file: File) => {
+  const addImage = async (file: File, target: 'body' | 'cover' = 'body') => {
     if (uploadController.current || saving) return
     const controller = new AbortController()
     uploadController.current = controller
-    setUploading(true); setUploadError(null)
+    setUploading(true); setUploadTarget(target); setUploadError(null)
     try {
       const url = await uploadImage(file, controller.signal)
       if (controller.signal.aborted || getSession() !== session) return
+      if (target === 'cover') {
+        form.setFieldValue('coverUrl', url)
+        message.success('封面已上传并设置')
+        return
+      }
       // Read the latest body so typing during an upload is preserved.
       const body = form.getFieldValue('contentMd') ?? ''
       form.setFieldValue('contentMd', `${body}${body ? '\n\n' : ''}${imageMarkdown(url)}\n`)
@@ -83,21 +91,25 @@ export function EditorPage() {
     {readOnly && !pending && <Alert type="info" message="作者仍有草稿或退回版本，请等待作者重新提交审核。" />}
     <Form form={form} layout="vertical" disabled={readOnly} initialValues={{ status: 'DRAFT' }} onFinish={v => void save(v)}>
     <Form.Item name="title" label="标题" rules={[{ required: true }]}><Input maxLength={200} /></Form.Item>
-    <Form.Item name="slug" label="文章链接标识（发布后固定）" rules={[{ required: true }, { pattern: /^[a-zA-Z0-9_-]+$/, message: '仅使用字母、数字、下划线或短横线' }]}><Input maxLength={240} disabled={readOnly || !!query.data?.publishedAt} /></Form.Item>
+    <Form.Item name="slug" label="文章链接标识（发布后固定）" extra="用于文章网址，例如 spring-boot-guide → /posts/spring-boot-guide。长度1–240位，只能使用英文字母、数字、短横线和下划线，不能包含中文、空格或斜杠；不可与其他文章重复，发布后不能修改。" rules={[{ required: true, message: '请输入文章链接标识' }, { pattern: /^[a-zA-Z0-9_-]{1,240}$/, message: '请输入1–240位英文字母、数字、短横线或下划线，不支持中文、空格、斜杠' }]}><Input placeholder="例如 spring-boot-guide" maxLength={240} showCount disabled={readOnly || !!query.data?.publishedAt} /></Form.Item>
     <Form.Item name="summary" label="摘要"><Input.TextArea maxLength={500} /></Form.Item>
-    <Form.Item name="categoryId" label="分类"><Select allowClear options={taxonomy.data?.categories.map(t => ({ value: t.id, label: t.name }))} onClear={() => form.setFieldValue('categoryId', null)} /></Form.Item>
-    <Form.Item name="tagIds" label="标签"><Select mode="multiple" maxCount={20} options={taxonomy.data?.tags.map(t => ({ value: t.id, label: t.name }))} /></Form.Item>
-    <Form.Item name="coverUrl" label="封面图片 URL"><Input placeholder="上传图片后，可将正文中的 HTTPS 图片链接复制到这里" /></Form.Item>
+    <div className="grid grid-cols-2 gap-6"><Form.Item name="categoryId" label="分类"><Select allowClear options={taxonomy.data?.categories.map(t => ({ value: t.id, label: t.name }))} onClear={() => form.setFieldValue('categoryId', null)} /></Form.Item>
+    <Form.Item name="tagIds" label="标签"><Select mode="multiple" maxCount={20} options={taxonomy.data?.tags.map(t => ({ value: t.id, label: t.name }))} /></Form.Item></div>
+    <Form.Item name="coverUrl" hidden><Input /></Form.Item>
+    <Form.Item label="封面图片" extra="支持 PNG、JPEG、WebP、GIF，最大5 MB；上传成功后自动设为封面，保存文章后生效。">
+      <Space align="start" wrap>{coverUrl ? <img src={coverUrl} alt="文章封面" className="h-28 w-48 rounded-lg border border-slate-200 object-cover" /> : <div className="flex h-28 w-48 items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-500">暂无封面</div>}<Space direction="vertical"><Button htmlType="button" loading={uploading && uploadTarget === 'cover'} disabled={saving || readOnly || uploading} onClick={() => coverInput.current?.click()}>{coverUrl ? '更换封面' : '上传封面'}</Button>{coverUrl && <Button htmlType="button" disabled={saving || readOnly || uploading} onClick={() => form.setFieldValue('coverUrl', null)}>移除封面</Button>}</Space></Space>
+      <input ref={coverInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void addImage(file, 'cover') }} />
+    </Form.Item>
     {admin && <Form.Item name="isTop" label="首页置顶" valuePropName="checked"><Switch /></Form.Item>}
     <div className="mb-3">
       <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={event => {
         const file = event.target.files?.[0]; event.target.value = ''; if (file) void addImage(file)
       }} />
-      <Button htmlType="button" loading={uploading} disabled={saving || readOnly} onClick={() => fileInput.current?.click()}>上传图片</Button>
+      <Button htmlType="button" loading={uploading && uploadTarget === 'body'} disabled={saving || readOnly || uploading} onClick={() => fileInput.current?.click()}>上传图片</Button>
       <span className="ml-3 text-sm text-gray-500">PNG、JPEG、WebP、GIF，最大 5 MB；上传后插入正文末尾。图片链接可公开访问。</span>
       {uploadError && <Alert className="mt-2" type="error" showIcon message={uploadError} />}
     </div>
     <Form.Item name="contentMd" label="正文（Markdown）" rules={[{ required: true }]}><Input.TextArea rows={18} /></Form.Item>
     <Space wrap><Button htmlType="submit" loading={saving} disabled={uploading || readOnly}>{id ? '保存' : '保存草稿'}</Button><Button type="primary" loading={saving} disabled={uploading || readOnly} onClick={() => { void form.validateFields().then(values => save(values, true)).catch(() => {}) }}>{admin ? '保存并发布' : '保存并投稿'}</Button></Space>
-  </Form><Button className="mt-4" onClick={() => setPreview(!preview)}>{preview ? '收起预览' : '预览正文'}</Button>{preview && <div className="prose mt-4"><ArticleMarkdown content={content ?? ''} /></div>}</section>
+  </Form><Button className="mt-4 self-start" onClick={() => setPreview(!preview)}>{preview ? '收起预览' : '预览正文'}</Button>{preview && <div className="prose mt-4"><ArticleMarkdown content={content ?? ''} /></div>}</section>
 }
