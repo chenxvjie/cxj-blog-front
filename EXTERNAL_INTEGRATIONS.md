@@ -1,6 +1,6 @@
 # 前端外部能力占位
 
-百度统计尚未插入生产脚本。上线时通过 `VITE_BAIDU_ANALYTICS_ID` 注入站点 ID，并在用户同意统计后动态加载；本地开发保持关闭。
+百度统计已接入公开页面 PV/UV，生产站点 ID 由 `.env.production` 的 `VITE_BAIDU_ANALYTICS_ID` 提供，用户同意后动态加载，本地开发保持关闭。控制台单页应用自动统计保持关闭，验收见 `BAIDU_ANALYTICS.md`。
 
 极验和 COS 的密钥由后端配置。正文图片上传使用后端预签名接口，浏览器直传 COS 后由后端核对并返回 CDN URL；服务器设置见后端 `COS_UPLOAD.md`。飞书通知尚未接入。
 
