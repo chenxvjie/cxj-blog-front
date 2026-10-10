@@ -2,8 +2,8 @@ import { Alert, Button, Card, Form, Input, Tabs, message } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { isAxiosError } from 'axios'
 import { emailLogin, passwordLogin, register, sendEmailCode } from '../api/auth'
-import { setSession } from '../api/session'
-import { useNavigate } from 'react-router-dom'
+import { setSession, useSession } from '../api/session'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { PageMeta } from '../components/PageMeta'
 
 type Values = { email: string; code: string; nickname?: string; password: string }
@@ -46,7 +46,7 @@ function AuthForm({ mode }: { mode: 'login' | 'register' | 'password' }) {
       const response = mode === 'login' ? await emailLogin(values.email, values.code)
         : mode === 'password' ? await passwordLogin(values.email, values.password)
         : await register(values.email, values.code, values.nickname ?? '读者', values.password)
-      setSession(response.data.data)
+      setSession({ accessToken: '', user: response.data.data.user })
       message.success('登录成功'); navigate('/admin/posts')
     } catch (error) { message.error(errorMessage(error)) } finally { setSubmitting(false) }
   }
@@ -67,9 +67,11 @@ function AuthForm({ mode }: { mode: 'login' | 'register' | 'password' }) {
   </Form>
 }
 export function AuthPage() {
+  const session = useSession()
+  if (session) return <Navigate to="/admin/posts" replace />
   return <section className="mx-auto max-w-md"><PageMeta title="登录或注册" />
     {import.meta.env.DEV && <Alert className="mb-4" type="info" showIcon message="本地开发模式" description="密码登录只需本地后端和数据库。邮箱验证码与极验默认停用，验证码登录及注册会提示中止，不会模拟成功。" />}
-    <Card title="欢迎来到 CXJ Blog"><Tabs items={[
+    <Card title="欢迎来到 CXJ Blog"><p>登录状态保留 24 小时，公共设备使用后请退出登录。</p><Tabs items={[
       { key: 'password', label: '密码登录', children: <AuthForm mode="password" /> },
       { key: 'login', label: '验证码登录', children: <AuthForm mode="login" /> },
       { key: 'register', label: '注册', children: <AuthForm mode="register" /> },

@@ -8,6 +8,10 @@ const { setSession, getSession } = await import(moduleUrl(new URL('../src/api/se
 const { queryClient } = await import(moduleUrl(new URL('../src/api/queryClient.ts', import.meta.url)))
 const { client } = await import(moduleUrl(new URL('../src/api/client.ts', import.meta.url)))
 const values = { title: 'Updated', slug: 'updated', contentMd: 'Body', summary: '', status: 'PUBLISHED' }
+test('explicit metadata clearing survives edits without submitting review fields', () => {
+  const payload = postPayload({ ...values, categoryId: null, coverUrl: null, tagIds: [], isTop: false, hasSubmission: true }, { categoryId: 9, coverUrl: 'https://example.test/a.png', tagIds: [2], isTop: true })
+  assert.deepEqual(payload, { ...values, categoryId: null, coverUrl: null, tagIds: [], isTop: false })
+})
 
 test('editing preserves fields absent from the form and excludes server-owned fields', () => {
   const payload = postPayload(values, { categoryId: 9, coverUrl: '/cover.png', isTop: true, authorId: 7, id: 3 })

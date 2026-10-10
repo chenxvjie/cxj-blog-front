@@ -5,6 +5,16 @@ import { moduleUrl } from './load-module.mjs'
 
 const { createAnalytics, publicAnalyticsPath } = await import(moduleUrl(new URL('../src/api/analytics.ts', import.meta.url)))
 const siteId = 'ee599e3ace5bd9241f2039baf24a2bc5'
+test('business events require a ready SDK, public route and continued consent', () => {
+  const f = fixture(); f.analytics.visit(visit()); f.analytics.event('article_open')
+  assert.deepEqual(f.sent, [])
+  f.ready(); f.analytics.event('article_open')
+  assert.deepEqual(f.sent.at(-1), ['_trackEvent', 'blog', 'article_open'])
+  f.choose('denied'); const count = f.sent.length; f.analytics.event('article_end')
+  assert.equal(f.sent.length, count)
+  f.choose('granted'); f.analytics.visit(visit('/admin/posts', 'private')); const privateCount = f.sent.length
+  f.analytics.event('search'); assert.equal(f.sent.length, privateCount)
+})
 const visit = (pathname = '/', key = 'a', extras = {}) => ({ origin: 'https://chenxujie-bolg.cn', pathname, key, search: '', hash: '', ...extras })
 function fixture(overrides = {}) {
   const loads = [], sent = [], enabled = []

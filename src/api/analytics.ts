@@ -58,5 +58,8 @@ export function createAnalytics(port: AnalyticsPort) {
   return {
     visit(visit: AnalyticsVisit) { current = visit; sync() },
     consentChanged() { sync() },
+    event(action: 'article_open' | 'taxonomy_filter' | 'search' | 'article_end' | 'outbound_click') {
+      if (eligible() && state === 'ready' && active) port.send(['_trackEvent', 'blog', action])
+    },
   }
 }
